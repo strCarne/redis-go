@@ -1,34 +1,50 @@
 package main
 
 import (
-	"fmt"
+	"bytes"
 	"log"
 	"net"
 )
 
+const (
+	DefaultBufferSize = 256
+)
+
 func main() {
-	l, err := net.Listen("tcp", "0.0.0.0:6379")
+	//nolint:gosec
+	listener, err := net.Listen("tcp", "0.0.0.0:6379")
 	if err != nil {
-		fmt.Println("Failed to bind to port 6379")
+		log.Println("Failed to bind to port 6379")
+
 		return
 	}
+	defer listener.Close()
 
 	for {
-		conn, err := l.Accept()
+		conn, err := listener.Accept()
 		if err != nil {
 			log.Println("Error accepting connection: ", err.Error())
 		}
 
-		buf := make([]byte, 216)
+		buf := make([]byte, DefaultBufferSize)
+
 		bytesRead, err := conn.Read(buf)
 		if err != nil {
 			log.Println("Error reading: ", err.Error())
+
 			continue
 		}
 
-		received := string(buf[:bytesRead])
+		buf = buf[:bytesRead]
+
+		received := string(buf)
 		log.Println(received)
 
-		conn.Write([]byte("+PONG\r\n"))
+		for range bytes.Split(buf, []byte("\n")) {
+			_, err := conn.Write([]byte("+PONG\r\n"))
+			if err != nil {
+				log.Println("Error writing: ", err.Error())
+			}
+		}
 	}
 }
