@@ -26,25 +26,31 @@ func main() {
 			log.Println("Error accepting connection: ", err.Error())
 		}
 
-		buf := make([]byte, DefaultBufferSize)
+		go handleConnection(conn)
+	}
+}
 
-		bytesRead, err := conn.Read(buf)
+func handleConnection(conn net.Conn) {
+	defer conn.Close()
+
+	buf := make([]byte, DefaultBufferSize)
+
+	bytesRead, err := conn.Read(buf)
+	if err != nil {
+		log.Println("Error reading: ", err.Error())
+
+		return
+	}
+
+	buf = buf[:bytesRead]
+
+	received := string(buf)
+	log.Println(received)
+
+	for range bytes.Split(buf, []byte("\n")) {
+		_, err := conn.Write([]byte("+PONG\r\n"))
 		if err != nil {
-			log.Println("Error reading: ", err.Error())
-
-			continue
-		}
-
-		buf = buf[:bytesRead]
-
-		received := string(buf)
-		log.Println(received)
-
-		for range bytes.Split(buf, []byte("\n")) {
-			_, err := conn.Write([]byte("+PONG\r\n"))
-			if err != nil {
-				log.Println("Error writing: ", err.Error())
-			}
+			log.Println("Error writing: ", err.Error())
 		}
 	}
 }
